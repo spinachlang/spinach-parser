@@ -1,14 +1,21 @@
-
 [package]
-name = "spinach_parser"
-version = "0.0.0"
-edition = "2024"
+name = "spinach-parser"
+version = "0.1.0"
+edition = "2021"
+description = "LALR parser for the Spinach language"
+authors = ["turboOrange"]
+license = "MIT"
+repository = "https://github.com/spinachlang/spinachlang"
+build = "build.rs"                                        # Add this line to specify the build script
 
 [lib]
 name = "spinach_parser"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-pest = "2.8.3"
-pest_derive = "2.8.3"
-pyo3 = { version = "0.27.1", features = ["extension-module"] }
+lalrpop-util = { version = "0.20.0", features = ["lexer"] }
+regex = "1.9.5"
+pyo3 = { version = "0.19", features = ["extension-module"] }
+
+[build-dependencies]
+lalrpop = "0.20.0"

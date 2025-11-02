@@ -1,0 +1,132 @@
+use std::str::FromStr;
+use crate::ast::*;
+
+grammar;
+
+pub Start: Vec<Statement> = {
+    Statements => <>,
+};
+
+Statements: Vec<Statement> = {
+    Statement => vec![<>],
+    <mut stmts:Statements> <_nl:NewLines> <stmt:Statement> => {
+        stmts.push(stmt);
+        stmts
+    },
+};
+
+NewLine: () = {
+    r"\n" => (),
+};
+
+NewLines: () = {
+    NewLine => (),
+    NewLines NewLine => (),
+};
+
+Statement: Statement = {
+    Declaration => Statement::Declaration(<>),
+    Action => Statement::Action(<>),
+};
+
+Declaration: Declaration = {
+    QubitDeclaration => Declaration::Qubit(<>),
+    ListDeclaration => Declaration::List(<>),
+    InstructionDeclaration => Declaration::Instruction(<>),
+};
+
+QubitDeclaration: QubitDecl = {
+    <name:Name> ":" "q"? <num:Number> => QubitDecl { name, number: num },
+};
+
+ListDeclaration: ListDecl = {
+    <name:Name> ":" <items:List> => ListDecl { name, items },
+};
+
+InstructionDeclaration: InstructionDecl = {
+    <name:Name> ":" <pipeline:GatePipeline> => InstructionDecl { name, pipeline },
+};
+
+GatePipeline: Vec<GateElement> = {
+    GateElement => vec![<>],
+    <mut pipeline:GatePipeline> "|" <element:GateElement> => {
+        pipeline.push(element);
+        pipeline
+    },
+};
+
+GateElement: GateElement = {
+    GatePipeByName => <>,
+    Gate => <>,
+};
+
+GatePipeByName: GateElement = {
+    <name:Name> => GateElement::NamedPipe { name, reverse: false },
+    <name:Name> "<-" => GateElement::NamedPipe { name, reverse: true },
+};
+
+Gate: GateElement = {
+    <name:UpperName> => GateElement::Gate { name, args: vec![] },
+    <name:UpperName> "(" <args:Args?> ")" => GateElement::Gate { 
+        name, 
+        args: args.unwrap_or_else(Vec::new) 
+    },
+};
+
+Args: Vec<ArgType> = {
+    ArgElement => vec![<>],
+    <mut args:Args> "," <arg:ArgElement> => {
+        args.push(arg);
+        args
+    },
+};
+
+ArgElement: ArgType = {
+    Name => ArgType::Name(<>),
+    Number => ArgType::Number(<>),
+};
+
+Action: Action = {
+    <target:ActionTarget> "->" <num:Number?> <pipeline:GatePipeline> => {
+        Action {
+            target,
+            index: num,
+            pipeline,
+        }
+    },
+};
+
+ActionTarget: ActionTarget = {
+    Name => ActionTarget::Name(<>),
+    Number => ActionTarget::Number(<>),
+    List => ActionTarget::List(<>),
+    "*" => ActionTarget::All,
+};
+
+List: Vec<ListItem> = {
+    "[" <items:ListItems> "]" => items,
+};
+
+ListItems: Vec<ListItem> = {
+    ListElement => vec![<>],
+    <mut items:ListItems> "," <item:ListElement> => {
+        items.push(item);
+        items
+    },
+};
+
+ListElement: ListItem = {
+    Name => ListItem::Name(<>),
+    Number => ListItem::Number(<>),
+};
+
+Name: String = r"[a-z][a-zA-Z0-9_]*" => String::from(<>);
+UpperName: String = r"[A-Z]+" => String::from(<>);
+Number: u32 = r"\d+" => u32::from_str(<>).unwrap();
+
+match {
+    r"\s+" => { },    // Skip whitespace
+    r"#[^\n]*" => { }, // Skip comments
+} else {
+    _
+}
